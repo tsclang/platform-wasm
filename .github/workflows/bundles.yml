@@ -1,0 +1,54 @@
+# Builds the emcc toolchain bundle for every target and attaches it to the
+# `toolchains-v1` release. Posix targets must be packed on a posix host
+# (executable bits / symlinks); cross-arch packing is fine — binaries are
+# never executed — so one arm64 runner covers both darwin targets.
+name: bundles
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            targets: linux-x64
+          - os: macos-15
+            targets: darwin-x64 darwin-arm64
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    timeout-minutes: 60
+    steps:
+      - name: Checkout compiler repo
+        uses: actions/checkout@v4
+        with:
+          repository: tsclang/tsclang
+          ref: develop
+          path: tsclang
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build bundles
+        run: |
+          cd tsclang
+          for t in ${{ matrix.targets }}; do
+            node packages/registry/scripts/build-bundles.mjs --target "$t" --only emcc
+          done
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd tsclang/.tsclang-tmp/bundles/out
+          gh release view toolchains-v1 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create toolchains-v1 -R "$GITHUB_REPOSITORY" --title "Toolchains v1" --notes "Stable toolchain bundles (sha256-pinned, see README)"
+          for f in *; do
+            echo "uploading $f"
+            gh release upload toolchains-v1 "$f" -R "$GITHUB_REPOSITORY" --clobber
+          done
+          sha256sum * || shasum -a 256 *

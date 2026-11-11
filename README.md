@@ -14,13 +14,17 @@ execute, and availability is under our control.
 
 | Tag | Toolchain | OS-arch | Origin | License |
 |-----|-----------|---------|--------|---------|
-| `toolchains-v1` | emcc 7.0.0 | win32-x64 | [Emscripten SDK](https://github.com/emscripten-core/emsdk) wasm-binaries + portable python/node | Emscripten (MIT/ULIM), CPython (PSF), Node (MIT) |
+| `toolchains-v1` | emcc 7.0.0 | win32-x64 | [emsdk](https://github.com/emscripten-core/emsdk) wasm-binaries + portable python/node | Emscripten (MIT/ULIM), CPython (PSF), Node (MIT) |
+| `toolchains-v1` | emcc 7.0.0 | linux-x64 | emsdk wasm-binaries + portable node; **requires system `python3` in PATH** (same as upstream emsdk on linux) | Emscripten (MIT/ULIM), Node (MIT) |
+| `toolchains-v1` | emcc 7.0.0 | darwin-x64, darwin-arm64 | emsdk wasm-binaries + portable python/node | Emscripten (MIT/ULIM), CPython (PSF), Node (MIT) |
 
 The emcc bundle is **composite**: the bare emsdk wasm-binaries archive is not
-self-sufficient, so the bundle ships portable python and node in `bin/`, a
-relocatable `.emscripten` config (paths resolved via `__file__`) and an
-`emcc`/`emcc.py` runpy shim. Linux/macOS bundles are assembled the same way by
-this repository's CI — see `.github/workflows/`.
+self-sufficient, so the bundle ships portable python and node, a relocatable
+`.emscripten` config (paths resolved via `__file__`) and an `emcc` shim
+(runpy stub on win32, wrapper script on posix preferring the bundled python).
+All targets are assembled by this repository's CI
+([`.github/workflows/bundles.yml`](.github/workflows/bundles.yml)); posix
+bundles are packed on posix runners so executable bits survive.
 
 Every archive carries a `TSC_BUNDLE_NOTICE.txt` stating the upstream sources
 and licenses. Layout contract: a `bin/` directory on top.
